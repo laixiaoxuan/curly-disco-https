@@ -24,6 +24,7 @@ import javax.net.ssl.HttpsURLConnection;
 import org.pf.util.Base64Converter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.Arrays;
 
 /**
  * Visit https website
@@ -38,7 +39,7 @@ public class Https
 	 * */
 	static 
 	{
-		System.setProperty("javax.net.ssl.trustStore", "../conf/vagustour.keystore");
+		System.setProperty("javax.net.ssl.trustStore", "../conf/bts.keystore");
 		System.setProperty("javax.net.ssl.trustStorePassword", "123456");
 	}
 
@@ -52,13 +53,90 @@ public class Https
 	 */
 	public static void main(String[] args) throws Exception
 	{
-		//构建请求
-		URL postUrl = new URL("https://vagustour.com/svn/WAM");
+		//enable SSH
+		String html = visitUrl( new URL("https://"+args[0]+"/protected/sshservice.html"));
+		String[] params = parseParams(html);
+		visitUrl( new URL("https://"+args[0]+"/protected/enableSsh.cgi?stamp="+params[0]+"&token="+params[1]+"&frame="+params[2]));
+			
+		//enable R&D port
+		html = visitUrl( new URL("https://"+args[0]+"/protected/RndPortsService.html"));
+		params = parseParams(html);
+		visitUrl( new URL("https://"+args[0]+"/protected/enableRndPorts.cgi?stamp="+params[0]+"&token="+params[1]+"&frame="+params[2]));
+	}
+	
+	/**
+	 * 解析参数
+	 */
+	private static String[] parseParams(String html) throws Exception
+	{
+		String[] params = new String[3];
+		String[] htmlLines = html.split("\r\n");
+		String stamp =null;
+		String token =null;
+		String frame =null;
+		boolean isParsingSshCgiParamss = false;
+		/*
+		#html#
+		<form ACTION="enableSsh.cgi" method="get">
+		<b>
+		<input type="SUBMIT" VALUE="Enable SSH Service">
+		<input type=hidden name=stamp value="1481259636">
+		<input type=hidden name=token value="1d1c545e35e6994ab63082456e0152bd5f7b125a739cc72b47eef8e37f0fef75">
+		<input type=hidden name=frame value="sshservice">
+		</b>
+		</form>
+        */
+		for(String htmlLine:htmlLines) 
+		{
+			if(htmlLine.equals("<form ACTION=\"enableSsh.cgi\" method=\"get\">") || htmlLine.equals("<form ACTION=\"enableRndPorts.cgi\" method=\"get\">"))
+			{
+				//start parsing
+				isParsingSshCgiParamss = true;
+				continue;
+			}
+			if(isParsingSshCgiParamss&&htmlLine.equals("</form>"))
+			{
+				//finish parsing
+				isParsingSshCgiParamss = false;
+				break;
+			}
+			
+			if(htmlLine.contains("name=stamp"))
+			{
+				String[] temp = htmlLine.split("value=\"");
+				stamp = htmlLine.split("value=\"")[1].split("\">")[0];
+			}
+			
+			if(htmlLine.contains("name=token"))
+			{
+				String[] temp = htmlLine.split("value=\"");
+				token = htmlLine.split("value=\"")[1].split("\">")[0];
+			}
+			
+			if(htmlLine.contains("name=frame"))
+			{
+				String[] temp = htmlLine.split("value=\"");
+				frame = htmlLine.split("value=\"")[1].split("\">")[0];
+			}
+		}
+		params[0]=stamp;
+		params[1]=token;
+		params[2]=frame;
+		LOG.info(Arrays.toString(params));
+		return params;
+	}
+	
+	/**
+	 * 访问URL
+	 */
+	private static String visitUrl(URL url) throws Exception
+	{
+		LOG.info(url.toString());
 		HttpsURLConnection.setDefaultHostnameVerifier ((hostname, session) -> true);
 		//打开连接
-		HttpsURLConnection con = (HttpsURLConnection) postUrl.openConnection();
+		HttpsURLConnection con = (HttpsURLConnection) url.openConnection();
 		//用户名密码
-		String credentials = "laixx" + ":" + "lxx@2013";
+		String credentials = "Nemuadmin" + ":" + "nemuuser";
 		String encoding = new String(Base64Converter.encode(credentials.getBytes("UTF-8")));
 		con.setRequestProperty("Authorization", String.format("Basic %s", encoding));
 		//解析response
@@ -72,6 +150,7 @@ public class Https
 		reader.close();
 		con.disconnect();
 		LOG.info(responseText.toString());
+		return responseText.toString();
 	}
 
 }
