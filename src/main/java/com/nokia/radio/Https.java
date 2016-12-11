@@ -103,19 +103,16 @@ public class Https
 			
 			if(htmlLine.contains("name=stamp"))
 			{
-				String[] temp = htmlLine.split("value=\"");
 				stamp = htmlLine.split("value=\"")[1].split("\">")[0];
 			}
 			
 			if(htmlLine.contains("name=token"))
 			{
-				String[] temp = htmlLine.split("value=\"");
 				token = htmlLine.split("value=\"")[1].split("\">")[0];
 			}
 			
 			if(htmlLine.contains("name=frame"))
 			{
-				String[] temp = htmlLine.split("value=\"");
 				frame = htmlLine.split("value=\"")[1].split("\">")[0];
 			}
 		}
